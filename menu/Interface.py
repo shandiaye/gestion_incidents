@@ -2,6 +2,8 @@ class Interface:
 
     def __init__(self, utilisateur):
         self.utilisateur = utilisateur
+        self.incidents = []
+        self.utilisateurs = []
 
     def afficher_menu_principale(self):
         print("Bienvenue au système de gestion des tickets d'incidents!")
@@ -16,7 +18,7 @@ class Interface:
             self.menu_technicien()
 
         elif role == "ADMIN":
-             self.menu_admin()
+            self.menu_admin()
 
 
     def menu_utilisateur(self):
@@ -29,7 +31,6 @@ class Interface:
             print("4. Filtrer mes incidents par statut")
             print("5. Filtrer mes incidents par priorite")
             print("0. Quitter")
-
 
             choix = input("Choix : ")
 
@@ -55,9 +56,6 @@ class Interface:
             else:
                 print("Choix invalide")
 
-    def __init__(self):
-        self.incidents = []
-
     def creer_incident(self):
         print("\n--- Création d'un incident ---")
 
@@ -71,7 +69,7 @@ class Interface:
             "titre": titre,
             "description": description,
             "statut": statut,
-             "priorite": priorite
+            "priorite": priorite
         }
 
         self.incidents.append(incident)
@@ -93,7 +91,7 @@ class Interface:
                 f"Priorité: {incident['priorite']}"
             )
 
-     def voir_detail_incident(self):
+    def voir_detail_incident(self):
         print("\n--- Détail d'un incident ---")
 
         id_incident = int(input("Entrer l'ID de l'incident : "))
@@ -107,8 +105,7 @@ class Interface:
                 print(f"Priorité : {incident['priorite']}")
                 return
 
-            print("Incident introuvable.")
-
+        print("Incident introuvable.")
 
     def filtrer_par_statut(self):
         print("\n--- Filtrer par statut ---")
@@ -180,8 +177,6 @@ class Interface:
             else:
                 print("Choix invalide.")
 
-
-
     def consulter_incidents(self):
         print("\n--- Incidents OUVERTS ou EN_COURS ---")
 
@@ -202,6 +197,9 @@ class Interface:
 
         for incident in self.incidents:
             if incident["id"] == id_incident:
+                if incident["statut"] != "OUVERT":
+                    print("Seul un incident OUVERT peut être pris en charge.")
+                    return
                 incident["statut"] = "EN_COURS"
                 print("Incident pris en charge.")
                 return
@@ -213,10 +211,14 @@ class Interface:
 
         id_incident = int(input("ID de l'incident : "))
         commentaire = input("Commentaire : ")
-        duree = input("Durée : ")
+        duree = input("Durée (minutes) : ")
 
         for incident in self.incidents:
             if incident["id"] == id_incident:
+
+                if incident["statut"] not in ["OUVERT", "EN_COURS"]:
+                    print("Impossible : l'incident doit être OUVERT ou EN_COURS.")
+                    return
 
                 if "interventions" not in incident:
                     incident["interventions"] = []
@@ -238,6 +240,9 @@ class Interface:
 
         for incident in self.incidents:
             if incident["id"] == id_incident:
+                if incident["statut"] != "EN_COURS":
+                    print("Seul un incident EN_COURS peut être résolu.")
+                    return
                 incident["statut"] = "RESOLU"
                 print("Incident résolu.")
                 return
@@ -274,6 +279,8 @@ class Interface:
 
         if not trouve:
             print("Aucun historique trouvé.")
+
+
 
     def menu_admin(self):
         while True:
@@ -356,91 +363,43 @@ class Interface:
                 self.taux_resolution_48h()
 
             elif choix == "0":
+                print("Déconnexion...")
                 break
+
+            else:
+                print("Choix invalide.")
 
     def consulter_incidents_ouverts(self):
         print("\n--- Incidents OUVERTS ou EN_COURS ---")
 
+        trouve = False
+
         for incident in self.incidents:
             if incident["statut"] in ["OUVERT", "EN_COURS"]:
                 print(incident)
+                trouve = True
 
-    def prendre_en_charge(self):
-        id_incident = int(input("ID de l'incident : "))
-
-        for incident in self.incidents:
-            if incident["id"] == id_incident:
-                incident["statut"] = "EN_COURS"
-                print("Incident pris en charge.")
-                return
-
-        print("Incident introuvable.")
-
-    def ajouter_intervention(self):
-        id_incident = int(input("ID de l'incident : "))
-        commentaire = input("Commentaire : ")
-        duree = input("Durée : ")
-
-        for incident in self.incidents:
-            if incident["id"] == id_incident:
-
-                if "interventions" not in incident:
-                    incident["interventions"] = []
-
-                incident["interventions"].append({
-                    "commentaire": commentaire,
-                    "duree": duree
-                })
-
-                print("Intervention ajoutée.")
-                return
-
-        print("Incident introuvable.")
-
-    def resoudre_incident(self):
-        id_incident = int(input("ID de l'incident : "))
-
-        for incident in self.incidents:
-            if incident["id"] == id_incident:
-                incident["statut"] = "RESOLU"
-                print("Incident résolu.")
-                return
-
-        print("Incident introuvable.")
-
-    def fermer_incident(self):
-        id_incident = int(input("ID de l'incident : "))
-
-        for incident in self.incidents:
-            if incident["id"] == id_incident:
-
-                if incident["statut"] == "RESOLU":
-                    incident["statut"] = "FERME"
-                    print("Incident fermé.")
-                else:
-                    print("L'incident doit être RESOLU.")
-
-                return
-
-        print("Incident introuvable.")
-
-    def consulter_historique(self):
-        print("\n--- Historique ---")
-
-        for incident in self.incidents:
-            if incident["statut"] in ["RESOLU", "FERME"]:
-                print(incident)
+        if not trouve:
+            print("Aucun incident trouvé.")
 
     def ajouter_utilisateur(self):
+        print("\n--- Ajouter un utilisateur ---")
+
         nom = input("Nom : ")
+        prenom = input("Prénom : ")
+        login = input("Login : ")
         email = input("Email : ")
-        role = input("Role : ")
+        role = input("Rôle (UTILISATEUR / TECHNICIEN / ADMIN) : ")
+        service = input("Service : ")
 
         utilisateur = {
             "id": len(self.utilisateurs) + 1,
             "nom": nom,
+            "prenom": prenom,
+            "login": login,
             "email": email,
-            "role": role
+            "role": role,
+            "service": service
         }
 
         self.utilisateurs.append(utilisateur)
@@ -450,10 +409,47 @@ class Interface:
     def afficher_utilisateurs(self):
         print("\n--- Utilisateurs ---")
 
+        if not self.utilisateurs:
+            print("Aucun utilisateur enregistré.")
+            return
+
         for utilisateur in self.utilisateurs:
             print(utilisateur)
 
+    def modifier_utilisateur(self):
+        print("\n--- Modifier un utilisateur ---")
+
+        id_user = int(input("ID utilisateur : "))
+
+        for utilisateur in self.utilisateurs:
+            if utilisateur["id"] == id_user:
+                print("Laisser vide pour ne pas modifier un champ.")
+
+                nom = input(f"Nom ({utilisateur['nom']}) : ")
+                prenom = input(f"Prénom ({utilisateur['prenom']}) : ")
+                email = input(f"Email ({utilisateur['email']}) : ")
+                role = input(f"Rôle ({utilisateur['role']}) : ")
+                service = input(f"Service ({utilisateur['service']}) : ")
+
+                if nom:
+                    utilisateur["nom"] = nom
+                if prenom:
+                    utilisateur["prenom"] = prenom
+                if email:
+                    utilisateur["email"] = email
+                if role:
+                    utilisateur["role"] = role
+                if service:
+                    utilisateur["service"] = service
+
+                print("Utilisateur modifié avec succès.")
+                return
+
+        print("Utilisateur introuvable.")
+
     def supprimer_utilisateur(self):
+        print("\n--- Supprimer un utilisateur ---")
+
         id_user = int(input("ID utilisateur : "))
 
         for utilisateur in self.utilisateurs:
@@ -467,26 +463,61 @@ class Interface:
     def consulter_tous_incidents(self):
         print("\n--- Tous les incidents ---")
 
+        if not self.incidents:
+            print("Aucun incident trouvé.")
+            return
+
         for incident in self.incidents:
             print(incident)
 
     def stat_incidents_par_statut(self):
-        print("Nombre total d'incidents :", len(self.incidents))
+        print("\n--- Nombre d'incidents par statut ---")
+
+        if not self.incidents:
+            print("Aucun incident trouvé.")
+            return
+
+        statuts = ["OUVERT", "EN_COURS", "RESOLU", "FERME"]
+
+        for statut in statuts:
+            total = 0
+            for incident in self.incidents:
+                if incident["statut"] == statut:
+                    total += 1
+            print(f"{statut} : {total}")
 
     def stat_incidents_par_priorite(self):
-        print("Statistiques par priorité")
+        print("\n--- Nombre d'incidents par priorité ---")
+
+        if not self.incidents:
+            print("Aucun incident trouvé.")
+            return
+
+        priorites = ["BASSE", "MOYENNE", "HAUTE", "CRITIQUE"]
+
+        for priorite in priorites:
+            total = 0
+            for incident in self.incidents:
+                if incident["priorite"] == priorite:
+                    total += 1
+            print(f"{priorite} : {total}")
 
     def temps_moyen_resolution(self):
-        print("Temps moyen de résolution")
+        print("\n--- Temps moyen de résolution ---")
+        print("Fonctionnalité à connecter à la base de données "
+              "(nécessite date_creation et date de résolution).")
 
     def top_3_techniciens(self):
-        print("Top 3 techniciens les plus actifs")
+        print("\n--- Top 3 techniciens les plus actifs ---")
+        print("Fonctionnalité à connecter à la base de données "
+              "(nécessite la table intervention).")
 
     def stats_par_technicien(self):
-        print("Statistiques par technicien")
+        print("\n--- Statistiques par technicien ---")
+        print("Fonctionnalité à connecter à la base de données "
+              "(nécessite la table intervention).")
 
     def taux_resolution_48h(self):
-        print("Taux de résolution sous 48h")
-
-
-
+        print("\n--- Taux de résolution sous 48h ---")
+        print("Fonctionnalité à connecter à la base de données "
+              "(nécessite date_creation et date de résolution).")
