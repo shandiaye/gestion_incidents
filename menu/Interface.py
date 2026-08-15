@@ -1,9 +1,18 @@
+from DAO.utilisateur_dao import UtilisateurDAO
+from DAO.intervenson_dao import InterventionDAO
+from DAO.incident_dao import IncidentDAO
+from Models.utilisateur import Utilisateur
+from Models.incident import Incident
+from Models.intervention import Intervention
+
+
 class Interface:
 
     def __init__(self, utilisateur):
         self.utilisateur = utilisateur
-        self.incidents = []
-        self.utilisateurs = []
+        self.dao = UtilisateurDAO()          
+        self.incident_dao = IncidentDAO()    
+        self.intervention_dao = InterventionDAO()  
 
     def afficher_menu_principale(self):
         print("Bienvenue au système de gestion des tickets d'incidents!")
@@ -51,6 +60,7 @@ class Interface:
 
             elif choix == "0":
                 print("Au revoir")
+
                 break
 
             else:
@@ -61,34 +71,32 @@ class Interface:
 
         titre = input("Titre : ")
         description = input("Description : ")
-        statut = input("Statut : ")
         priorite = input("Priorité : ")
 
-        incident = {
-            "id": len(self.incidents) + 1,
-            "titre": titre,
-            "description": description,
-            "statut": statut,
-            "priorite": priorite
-        }
+        nouvel_incident = Incident(
+            titre=titre,
+            description=description,
+            priorite=priorite,
+            utilisateur_id=self.utilisateur.id
+        )
 
-        self.incidents.append(incident)
-
-        print("Incident créé avec succès.")
+        self.incident_dao.ajouter(nouvel_incident)
 
     def voir_mes_incidents(self):
         print("\n--- Mes incidents ---")
 
-        if not self.incidents:
+        incidents = self.incident_dao.get_by_utilisateur(self.utilisateur.id)
+
+        if not incidents:
             print("Aucun incident trouvé.")
             return
 
-        for incident in self.incidents:
+        for incident in incidents:
             print(
-                f"ID: {incident['id']} | "
-                f"Titre: {incident['titre']} | "
-                f"Statut: {incident['statut']} | "
-                f"Priorité: {incident['priorite']}"
+                f"ID: {incident.id} | "
+                f"Titre: {incident.titre} | "
+                f"Statut: {incident.statut} | "
+                f"Priorité: {incident.priorite}"
             )
 
     def voir_detail_incident(self):
@@ -96,46 +104,45 @@ class Interface:
 
         id_incident = int(input("Entrer l'ID de l'incident : "))
 
-        for incident in self.incidents:
-            if incident["id"] == id_incident:
-                print(f"ID : {incident['id']}")
-                print(f"Titre : {incident['titre']}")
-                print(f"Description : {incident['description']}")
-                print(f"Statut : {incident['statut']}")
-                print(f"Priorité : {incident['priorite']}")
-                return
+        incident = self.incident_dao.get_by_id(id_incident)
 
-        print("Incident introuvable.")
+        if incident is None or incident.utilisateur_id != self.utilisateur.id:
+            print("Incident introuvable.")
+            return
+
+        print(f"ID : {incident.id}")
+        print(f"Titre : {incident.titre}")
+        print(f"Description : {incident.description}")
+        print(f"Statut : {incident.statut}")
+        print(f"Priorité : {incident.priorite}")
 
     def filtrer_par_statut(self):
         print("\n--- Filtrer par statut ---")
 
-        statut = input("Statut recherché : ")
+        statut = input("Statut recherché : ").upper()
 
-        trouve = False
+        incidents = self.incident_dao.filtrer_par_statut(statut, utilisateur_id=self.utilisateur.id)
 
-        for incident in self.incidents:
-            if incident["statut"].lower() == statut.lower():
-                print(incident)
-                trouve = True
-
-        if not trouve:
+        if not incidents:
             print("Aucun incident trouvé.")
+            return
+
+        for incident in incidents:
+            print(f"ID: {incident.id} | Titre: {incident.titre} | Statut: {incident.statut} | Priorité: {incident.priorite}")
 
     def filtrer_par_priorite(self):
         print("\n--- Filtrer par priorité ---")
 
-        priorite = input("Priorité recherchée : ")
+        priorite = input("Priorité recherchée : ").upper()
 
-        trouve = False
+        incidents = self.incident_dao.filtrer_par_priorite(priorite, utilisateur_id=self.utilisateur.id)
 
-        for incident in self.incidents:
-            if incident["priorite"].lower() == priorite.lower():
-                print(incident)
-                trouve = True
-
-        if not trouve:
+        if not incidents:
             print("Aucun incident trouvé.")
+            return
+
+        for incident in incidents:
+            print(f"ID: {incident.id} | Titre: {incident.titre} | Statut: {incident.statut} | Priorité: {incident.priorite}")
 
 
 
@@ -180,31 +187,21 @@ class Interface:
     def consulter_incidents(self):
         print("\n--- Incidents OUVERTS ou EN_COURS ---")
 
-        trouve = False
+        incidents = self.incident_dao.get_ouverts_et_en_cours()
 
-        for incident in self.incidents:
-            if incident["statut"] in ["OUVERT", "EN_COURS"]:
-                print(incident)
-                trouve = True
-
-        if not trouve:
+        if not incidents:
             print("Aucun incident trouvé.")
+            return
+
+        for incident in incidents:
+            print(f"ID: {incident.id} | Titre: {incident.titre} | Statut: {incident.statut} | Priorité: {incident.priorite}")
 
     def prendre_en_charge(self):
         print("\n--- Prendre en charge un incident ---")
 
         id_incident = int(input("ID de l'incident : "))
 
-        for incident in self.incidents:
-            if incident["id"] == id_incident:
-                if incident["statut"] != "OUVERT":
-                    print("Seul un incident OUVERT peut être pris en charge.")
-                    return
-                incident["statut"] = "EN_COURS"
-                print("Incident pris en charge.")
-                return
-
-        print("Incident introuvable.")
+        self.incident_dao.changer_statut(id_incident, "EN_COURS")
 
     def ajouter_intervention(self):
         print("\n--- Ajouter une intervention ---")
@@ -213,72 +210,45 @@ class Interface:
         commentaire = input("Commentaire : ")
         duree = input("Durée (minutes) : ")
 
-        for incident in self.incidents:
-            if incident["id"] == id_incident:
+        nouvelle_intervention = Intervention(
+            commentaire=commentaire,
+            duree_minutes=duree,
+            incident_id=id_incident,
+            technicien_id=self.utilisateur.id
+        )
 
-                if incident["statut"] not in ["OUVERT", "EN_COURS"]:
-                    print("Impossible : l'incident doit être OUVERT ou EN_COURS.")
-                    return
 
-                if "interventions" not in incident:
-                    incident["interventions"] = []
-
-                incident["interventions"].append({
-                    "commentaire": commentaire,
-                    "duree": duree
-                })
-
-                print("Intervention ajoutée.")
-                return
-
-        print("Incident introuvable.")
+        self.intervention_dao.ajouter(nouvelle_intervention)
 
     def resoudre_incident(self):
         print("\n--- Résoudre un incident ---")
 
         id_incident = int(input("ID de l'incident : "))
 
-        for incident in self.incidents:
-            if incident["id"] == id_incident:
-                if incident["statut"] != "EN_COURS":
-                    print("Seul un incident EN_COURS peut être résolu.")
-                    return
-                incident["statut"] = "RESOLU"
-                print("Incident résolu.")
-                return
 
-        print("Incident introuvable.")
+        self.incident_dao.changer_statut(id_incident, "RESOLU")
 
     def fermer_incident(self):
         print("\n--- Fermer un incident ---")
 
         id_incident = int(input("ID de l'incident : "))
 
-        for incident in self.incidents:
-            if incident["id"] == id_incident:
 
-                if incident["statut"] == "RESOLU":
-                    incident["statut"] = "FERME"
-                    print("Incident fermé.")
-                else:
-                    print("L'incident doit être résolu avant fermeture.")
-
-                return
-
-        print("Incident introuvable.")
+        self.incident_dao.changer_statut(id_incident, "FERME")
 
     def consulter_historique(self):
         print("\n--- Historique des incidents traités ---")
 
-        trouve = False
+        resolus = self.incident_dao.filtrer_par_statut("RESOLU")
+        fermes = self.incident_dao.filtrer_par_statut("FERME")
+        incidents = resolus + fermes
 
-        for incident in self.incidents:
-            if incident["statut"] in ["RESOLU", "FERME"]:
-                print(incident)
-                trouve = True
-
-        if not trouve:
+        if not incidents:
             print("Aucun historique trouvé.")
+            return
+
+        for incident in incidents:
+            print(f"ID: {incident.id} | Titre: {incident.titre} | Statut: {incident.statut} | Priorité: {incident.priorite}")
 
 
 
@@ -372,15 +342,16 @@ class Interface:
     def consulter_incidents_ouverts(self):
         print("\n--- Incidents OUVERTS ou EN_COURS ---")
 
-        trouve = False
+        incidents = self.incident_dao.get_ouverts_et_en_cours()
 
-        for incident in self.incidents:
-            if incident["statut"] in ["OUVERT", "EN_COURS"]:
-                print(incident)
-                trouve = True
-
-        if not trouve:
+        if not incidents:
             print("Aucun incident trouvé.")
+            return
+
+        for incident in incidents:
+            print(f"ID: {incident.id} | Titre: {incident.titre} | Statut: {incident.statut} | Priorité: {incident.priorite}")
+
+
 
     def ajouter_utilisateur(self):
         print("\n--- Ajouter un utilisateur ---")
@@ -388,136 +359,164 @@ class Interface:
         nom = input("Nom : ")
         prenom = input("Prénom : ")
         login = input("Login : ")
+        password = input("Mot de passe : ")
         email = input("Email : ")
         role = input("Rôle (UTILISATEUR / TECHNICIEN / ADMIN) : ")
         service = input("Service : ")
 
-        utilisateur = {
-            "id": len(self.utilisateurs) + 1,
-            "nom": nom,
-            "prenom": prenom,
-            "login": login,
-            "email": email,
-            "role": role,
-            "service": service
-        }
+        nouvel_utilisateur = Utilisateur(
+            login=login,
+            password=password,
+            nom=nom,
+            prenom=prenom,
+            email=email,
+            role=role,
+            service=service
+        )
 
-        self.utilisateurs.append(utilisateur)
 
-        print("Utilisateur ajouté.")
+        self.dao.ajouter(nouvel_utilisateur)
 
     def afficher_utilisateurs(self):
         print("\n--- Utilisateurs ---")
 
-        if not self.utilisateurs:
+        utilisateurs = self.dao.get_all()
+
+        if not utilisateurs:
             print("Aucun utilisateur enregistré.")
             return
 
-        for utilisateur in self.utilisateurs:
-            print(utilisateur)
+        for u in utilisateurs:
+            print(
+                f"ID: {u.id} | Login: {u.login} | Nom: {u.nom} {u.prenom} | "
+                f"Email: {u.email} | Rôle: {u.role} | Service: {u.service}"
+            )
 
     def modifier_utilisateur(self):
         print("\n--- Modifier un utilisateur ---")
 
         id_user = int(input("ID utilisateur : "))
 
-        for utilisateur in self.utilisateurs:
-            if utilisateur["id"] == id_user:
-                print("Laisser vide pour ne pas modifier un champ.")
+        utilisateur = self.dao.get_by_id(id_user)
 
-                nom = input(f"Nom ({utilisateur['nom']}) : ")
-                prenom = input(f"Prénom ({utilisateur['prenom']}) : ")
-                email = input(f"Email ({utilisateur['email']}) : ")
-                role = input(f"Rôle ({utilisateur['role']}) : ")
-                service = input(f"Service ({utilisateur['service']}) : ")
+        if utilisateur is None:
+            print("Utilisateur introuvable.")
+            return
 
-                if nom:
-                    utilisateur["nom"] = nom
-                if prenom:
-                    utilisateur["prenom"] = prenom
-                if email:
-                    utilisateur["email"] = email
-                if role:
-                    utilisateur["role"] = role
-                if service:
-                    utilisateur["service"] = service
+        print("Laisser vide pour ne pas modifier un champ.")
 
-                print("Utilisateur modifié avec succès.")
-                return
+        nom = input(f"Nom ({utilisateur.nom}) : ")
+        prenom = input(f"Prénom ({utilisateur.prenom}) : ")
+        email = input(f"Email ({utilisateur.email}) : ")
+        role = input(f"Rôle ({utilisateur.role}) : ")
+        service = input(f"Service ({utilisateur.service}) : ")
 
-        print("Utilisateur introuvable.")
+        if nom:
+            utilisateur.nom = nom
+        if prenom:
+            utilisateur.prenom = prenom
+        if email:
+            utilisateur.email = email
+        if role:
+            utilisateur.role = role
+        if service:
+            utilisateur.service = service
+
+
+        self.dao.modifier(utilisateur)
 
     def supprimer_utilisateur(self):
         print("\n--- Supprimer un utilisateur ---")
 
         id_user = int(input("ID utilisateur : "))
 
-        for utilisateur in self.utilisateurs:
-            if utilisateur["id"] == id_user:
-                self.utilisateurs.remove(utilisateur)
-                print("Utilisateur supprimé.")
-                return
+        utilisateur = self.dao.get_by_id(id_user)
 
-        print("Utilisateur introuvable.")
+        if utilisateur is None:
+            print("Utilisateur introuvable.")
+            return
+
+
+        self.dao.delete_by_id(id_user)
 
     def consulter_tous_incidents(self):
         print("\n--- Tous les incidents ---")
 
-        if not self.incidents:
+        incidents = self.incident_dao.get_all()
+
+        if not incidents:
             print("Aucun incident trouvé.")
             return
 
-        for incident in self.incidents:
-            print(incident)
+        for incident in incidents:
+            print(f"ID: {incident.id} | Titre: {incident.titre} | Statut: {incident.statut} | Priorité: {incident.priorite}")
 
     def stat_incidents_par_statut(self):
         print("\n--- Nombre d'incidents par statut ---")
 
-        if not self.incidents:
+        incidents = self.incident_dao.get_all()
+
+        if not incidents:
             print("Aucun incident trouvé.")
             return
 
         statuts = ["OUVERT", "EN_COURS", "RESOLU", "FERME"]
 
         for statut in statuts:
-            total = 0
-            for incident in self.incidents:
-                if incident["statut"] == statut:
-                    total += 1
+            total = sum(1 for incident in incidents if incident.statut == statut)
             print(f"{statut} : {total}")
 
     def stat_incidents_par_priorite(self):
         print("\n--- Nombre d'incidents par priorité ---")
 
-        if not self.incidents:
+        incidents = self.incident_dao.get_all()
+
+        if not incidents:
             print("Aucun incident trouvé.")
             return
 
         priorites = ["BASSE", "MOYENNE", "HAUTE", "CRITIQUE"]
 
         for priorite in priorites:
-            total = 0
-            for incident in self.incidents:
-                if incident["priorite"] == priorite:
-                    total += 1
+            total = sum(1 for incident in incidents if incident.priorite == priorite)
             print(f"{priorite} : {total}")
 
     def temps_moyen_resolution(self):
         print("\n--- Temps moyen de résolution ---")
-        print("Fonctionnalité à connecter à la base de données "
-              "(nécessite date_creation et date de résolution).")
+        moyenne = self.incident_dao.temps_moyen_resolution()
+        if moyenne is None:
+            print("Aucun incident résolu pour le moment.")
+        else:
+            print(f"Temps moyen de résolution : {moyenne} heure(s)")
 
     def top_3_techniciens(self):
         print("\n--- Top 3 techniciens les plus actifs ---")
-        print("Fonctionnalité à connecter à la base de données "
-              "(nécessite la table intervention).")
+        resultats = self.intervention_dao.top_techniciens(3)
+
+        if not resultats:
+            print("Aucune intervention enregistrée.")
+            return
+
+        for rang, (id_tech, nom, prenom, nb) in enumerate(resultats, start=1):
+            print(f"{rang}. {prenom} {nom} - {nb} intervention(s)")
 
     def stats_par_technicien(self):
         print("\n--- Statistiques par technicien ---")
-        print("Fonctionnalité à connecter à la base de données "
-              "(nécessite la table intervention).")
+        resultats = self.intervention_dao.stats_par_technicien()
+
+        if not resultats:
+            print("Aucun technicien enregistré.")
+            return
+
+        for id_tech, nom, prenom, nb, temps_total, temps_moyen in resultats:
+            print(f"{prenom} {nom} : {nb} intervention(s) | "
+                  f"{temps_total} min au total | "
+                  f"{temps_moyen:.1f} min en moyenne")
 
     def taux_resolution_48h(self):
         print("\n--- Taux de résolution sous 48h ---")
-        print("Fonctionnalité à connecter à la base de données "
-              "(nécessite date_creation et date de résolution).")
+        taux = self.incident_dao.taux_resolution_48h()
+        if taux is None:
+            print("Aucun incident résolu pour le moment.")
+        else:
+            print(f"Taux de résolution sous 48h : {taux}%")

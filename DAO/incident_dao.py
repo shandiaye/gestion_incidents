@@ -197,3 +197,42 @@ class IncidentDAO(BaseDAO):
             priorite=ligne[3], statut=ligne[4], date_creation=ligne[5],
             utilisateur_id=ligne[6]
         )
+
+    def temps_moyen_resolution(self):
+        #ici on Retourne le temps moyen (en heures) entre la creation d'un incident et sa derniere intervention, pour les incidents RESOLU ou FERME
+        try:
+            cursor = self.conn.get_cursor()
+            cursor.execute(
+                """SELECT AVG(
+                       EXTRACT(EPOCH FROM (
+                           (SELECT MAX(date_intervation) FROM intervention WHERE incident_id = inc.id) - inc.date_creation
+                       )) / 3600.0
+                   )
+                   FROM incident inc
+                   WHERE inc.statut IN ('RESOLU', 'FERME')"""
+            )
+            resultat = cursor.fetchone()[0]
+            return round(resultat, 1) if resultat is not None else None
+        except Exception as e:
+            print(f"Erreur temps_moyen_resolution : {e}")
+            return None
+
+    def taux_resolution_48h(self):
+        #la on retourne le pourcentage d'incidents resolus/fermes en 48h ou moins
+        try:
+            cursor = self.conn.get_cursor()
+            cursor.execute(
+                """SELECT
+                       COUNT(*) FILTER (
+                           WHERE EXTRACT(EPOCH FROM (
+                               (SELECT MAX(date_intervation) FROM intervention WHERE incident_id = inc.id) - inc.date_creation
+                           )) / 3600.0 <= 48
+                       ) * 100.0 / COUNT(*)
+                   FROM incident inc
+                   WHERE inc.statut IN ('RESOLU', 'FERME')"""
+            )
+            resultat = cursor.fetchone()[0]
+            return round(resultat, 1) if resultat is not None else None
+        except Exception as e:
+            print(f"Erreur taux_resolution_48h : {e}")
+            return None

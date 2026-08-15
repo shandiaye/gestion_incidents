@@ -120,3 +120,39 @@ class InterventionDAO(BaseDAO):
             id=ligne[0], commentaire=ligne[1], duree_minutes=ligne[2],
             date_intervention=ligne[3], incident_id=ligne[4], technicien_id=ligne[5]
         )
+
+    def top_techniciens(self, limite=3):
+        try:
+            cursor = self.conn.get_cursor()
+            cursor.execute(
+                """SELECT u.id, u.nom, u.prenom, COUNT(i.id) AS nb_interventions
+                   FROM intervention i
+                   JOIN utilisateur u ON i.technicien_id = u.id
+                   GROUP BY u.id, u.nom, u.prenom
+                   ORDER BY nb_interventions DESC
+                   LIMIT %s""",
+                (limite,)
+            )
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Erreur top_techniciens : {e}")
+            return []
+
+    def stats_par_technicien(self):
+        try:
+            cursor = self.conn.get_cursor()
+            cursor.execute(
+                """SELECT u.id, u.nom, u.prenom,
+                          COUNT(i.id) AS nb_interventions,
+                          COALESCE(SUM(i.duree_minutes), 0) AS temps_total,
+                          COALESCE(AVG(i.duree_minutes), 0) AS temps_moyen
+                   FROM utilisateur u
+                   LEFT JOIN intervention i ON i.technicien_id = u.id
+                   WHERE u.role = 'TECHNICIEN'
+                   GROUP BY u.id, u.nom, u.prenom
+                   ORDER BY nb_interventions DESC"""
+            )
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Erreur stats_par_technicien : {e}")
+            return []

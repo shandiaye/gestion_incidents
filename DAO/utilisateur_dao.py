@@ -13,7 +13,7 @@ class UtilisateurDAO(BaseDAO):
         """Retourne la liste de tous les utilisateurs."""
         try:
             cursor = self.conn.get_cursor()
-            cursor.execute("SELECT id, login, password, nom, prenom, email, role, service, date_creation FROM utilisateur")
+            cursor.execute("SELECT id, login, password, nom, prenom, email, role, service, date_creation FROM utilisateur ORDER BY id")
             lignes = cursor.fetchall()
             utilisateurs = []
             for ligne in lignes:
