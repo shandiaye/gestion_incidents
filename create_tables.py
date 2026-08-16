@@ -40,7 +40,7 @@ try :
             id SERIAL PRIMARY KEY,
             commentaire TEXT NOT NULL,
             duree_minutes INTEGER NOT NULL CHECK (duree_minutes >= 0),
-            date_intervation TIMESTAMP DEFAULT NOW(),
+            date_intervention TIMESTAMP DEFAULT NOW(),
             incident_id INTEGER NOT NULL REFERENCES incident(id),
             technicien_id INTEGER NOT NULL REFERENCES utilisateur(id)
             );

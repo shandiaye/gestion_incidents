@@ -23,7 +23,7 @@ class Auth:
                 print(f"Erreur lors de la connexion : {erreur}")
                 return None
 
-            if utilisateur is not None and utilisateur.password == mot_de_passe:
+            if utilisateur is not None and utilisateur.password == UtilisateurDAO.hacher_mot_de_passe(mot_de_passe):
                 print(f"\nBienvenue {utilisateur.prenom} {utilisateur.nom} "
                       f"({utilisateur.role}) !\n")
                 return utilisateur

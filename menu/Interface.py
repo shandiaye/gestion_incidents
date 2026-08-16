@@ -361,7 +361,11 @@ class Interface:
         login = input("Login : ")
         password = input("Mot de passe : ")
         email = input("Email : ")
-        role = input("Rôle (UTILISATEUR / TECHNICIEN / ADMIN) : ")
+        while True:
+            role = input("Rôle (UTILISATEUR / TECHNICIEN / ADMIN) : ").strip().upper()
+            if role in ("UTILISATEUR", "TECHNICIEN", "ADMIN"):
+                break
+            print("Rôle invalide. Choisis parmi UTILISATEUR, TECHNICIEN ou ADMIN.")
         service = input("Service : ")
 
         nouvel_utilisateur = Utilisateur(

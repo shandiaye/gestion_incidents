@@ -1,6 +1,6 @@
 from DAO.base_dao import BaseDAO
 from Models.utilisateur import Utilisateur
-
+import hashlib
 
 class UtilisateurDAO(BaseDAO):
     """
@@ -78,6 +78,11 @@ class UtilisateurDAO(BaseDAO):
 
     # ---------- METHODES SPECIFIQUES ----------
 
+    @staticmethod
+    def hacher_mot_de_passe(mot_de_passe):
+        return hashlib.sha256(mot_de_passe.encode()).hexdigest()
+
+
     def ajouter(self, utilisateur):
         """Ajoute un nouvel utilisateur dans la base."""
         try:
@@ -85,7 +90,7 @@ class UtilisateurDAO(BaseDAO):
             cursor.execute(
                 """INSERT INTO utilisateur (login, password, nom, prenom, email, role, service)
                    VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-                (utilisateur.login, utilisateur.password, utilisateur.nom,
+                (utilisateur.login, self.hacher_mot_de_passe(utilisateur.password), utilisateur.nom,
                  utilisateur.prenom, utilisateur.email, utilisateur.role, utilisateur.service)
             )
             self.conn.commit()
@@ -104,7 +109,7 @@ class UtilisateurDAO(BaseDAO):
                 """UPDATE utilisateur
                    SET login=%s, password=%s, nom=%s, prenom=%s, email=%s, role=%s, service=%s
                    WHERE id=%s""",
-                (utilisateur.login, utilisateur.password, utilisateur.nom,
+                (utilisateur.login, self.hacher_mot_de_passe(utilisateur.password), utilisateur.nom,
                  utilisateur.prenom, utilisateur.email, utilisateur.role,
                  utilisateur.service, utilisateur.id)
             )
